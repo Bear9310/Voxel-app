@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voxel_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your .env file}
+      POSTGRES_DB: ${POSTGRES_DB:-voxel_prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  app:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      # persistent volume for uploaded video files — without this, every
+      # uploaded video is deleted the next time this container restarts
+      - voxel_uploads:/app/data
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-voxel_admin}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in your .env file}@db:5432/${POSTGRES_DB:-voxel_prod}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in your .env file}
+      COOKIE_SECRET: ${COOKIE_SECRET:?set COOKIE_SECRET in your .env file}
+      STORAGE_DIR: /app/data
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-53687091200}
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  pgdata:
+  voxel_uploads:

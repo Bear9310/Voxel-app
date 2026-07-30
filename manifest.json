@@ -1,0 +1,24 @@
+{
+  "name": "VOXEL — Watch Different",
+  "short_name": "Voxel",
+  "description": "A creator-first video platform with clean feeds and no autoplay mid-rolls.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07050a",
+  "theme_color": "#a8102b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&h=192&fit=crop&fm=png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=512&h=512&fit=crop&fm=png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

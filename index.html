@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VOXEL — Watch Different</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#a8102b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#07050a;
+    --void-2:#0d0710;
+    --panel:rgba(24,10,16,0.62);
+    --panel-solid:#160a10;
+    --border:rgba(255,255,255,0.09);
+    --maroon:#4a0713;
+    --crimson:#a8102b;
+    --crimson-bright:#e0203f;
+    --rose:#ff5577;
+    --cream:#f3ece6;
+    --dim:rgba(243,236,230,0.6);
+    --dimmer:rgba(243,236,230,0.38);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+  }
+  body {
+    background: var(--void);
+    color: var(--cream);
+    font-family: 'Inter', sans-serif;
+  }
+  h1, h2, h3, .wordmark, .btn-primary, .tab { font-family: 'Space Grotesk', sans-serif; }
+
+  canvas#bg{
+    position:fixed; inset:0; width:100%; height:100%; z-index:0;
+    filter:saturate(0.85) brightness(0.55);
+  }
+  .scrim{
+    position:fixed; inset:0; z-index:1;
+    background:
+      radial-gradient(ellipse 80% 60% at 30% 0%, rgba(7,5,10,0.2), rgba(7,5,10,0.75) 60%),
+      linear-gradient(180deg, rgba(7,5,10,0.35) 0%, rgba(7,5,10,0.85) 100%);
+    pointer-events:none;
+  }
+
+  #app {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+  }
+
+  .main-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    width: 100%;
+  }
+
+  /* ===================== 3D DOCK ===================== */
+  .dock3d{
+    width:78px;
+    flex-shrink:0;
+    display:flex; flex-direction:column; align-items:center;
+    padding:22px 0;
+    gap:14px;
+    perspective:600px;
+    background:linear-gradient(180deg, rgba(20,8,13,0.55), rgba(10,4,7,0.75));
+    border-right:1px solid var(--border);
+    backdrop-filter:blur(16px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .dock3d::-webkit-scrollbar { width: 0px; }
+
+  .dock3d .brand{
+    width:42px;height:42px;border-radius:12px;
+    background:linear-gradient(145deg, var(--rose), var(--maroon));
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:17px; color:#fff;
+    margin-bottom:10px;
+    box-shadow:0 8px 18px rgba(224,32,63,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+    transform-style:preserve-3d;
+  }
+  .cube3d{
+    position:relative;
+    width:48px; height:44px;
+    border-radius:14px;
+    background:linear-gradient(160deg, #23111a, #150910);
+    border:1px solid rgba(255,255,255,0.07);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transform-style:preserve-3d;
+    transform:translateZ(0);
+    box-shadow:
+      0 6px 0 rgba(0,0,0,0.55),
+      0 8px 14px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    transition:transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .16s ease, background .2s ease;
+    color:var(--dim);
+  }
+  .cube3d svg{ width:20px; height:20px; position:relative; z-index:2; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+  .cube3d:hover{
+    transform:translateY(-3px) rotateX(8deg);
+    color:var(--cream);
+    box-shadow:
+      0 9px 0 rgba(0,0,0,0.55),
+      0 14px 20px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .cube3d:active{
+    transform:translateY(2px) rotateX(0deg);
+    box-shadow:0 2px 0 rgba(0,0,0,0.55), 0 3px 6px rgba(0,0,0,0.5);
+  }
+  .cube3d.active{
+    background:linear-gradient(155deg, var(--crimson-bright), var(--maroon));
+    color:#fff;
+    box-shadow:
+      0 6px 0 rgba(75,4,15,0.9),
+      0 10px 22px rgba(224,32,63,0.55),
+      inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .dock3d .dock-spacer{ flex:1; }
+  .dock3d .avatar-btn{
+    width:44px; height:44px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, var(--rose), var(--maroon) 75%);
+    border:2px solid rgba(255,255,255,0.2);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; color:#fff; font-size:15px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.5);
+    transition:transform .16s ease;
+  }
+  .dock3d .avatar-btn:hover{ transform:translateY(-2px) scale(1.03); }
+  .dock-label{
+    position:fixed; left:88px; background:#1a0c12; color:var(--cream);
+    padding:6px 10px; border-radius:8px; font-size:12px; font-weight:600;
+    border:1px solid var(--border); pointer-events:none; opacity:0; transition:opacity .12s ease;
+    z-index:50; white-space:nowrap;
+  }
+
+  /* ===================== TOPBAR ===================== */
+  .topbar{
+    display:flex; align-items:center; gap:20px;
+    padding:16px 28px;
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(14px);
+  }
+  .wordmark{ font-weight:700; font-size:20px; letter-spacing:0.5px; }
+  .wordmark span{ color:var(--rose); }
+  .search-shell{
+    flex:1; max-width:520px; margin:0 auto;
+    display:flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid var(--border); border-radius:24px;
+    padding:9px 16px;
+  }
+  .search-shell input{
+    flex:1; background:none; border:none; outline:none; color:var(--cream); font-size:14px;
+  }
+  .search-shell input::placeholder{ color:var(--dimmer); }
+  .search-shell svg{ width:16px; height:16px; color:var(--dim); flex-shrink:0; }
+  .top-actions{ display:flex; align-items:center; gap:12px; }
+  .btn-primary{
+    background:linear-gradient(135deg, var(--crimson-bright), var(--rose));
+    color:#fff; border:none; padding:9px 18px; border-radius:10px;
+    font-weight:600; font-size:13.5px; cursor:pointer;
+    box-shadow:0 6px 16px rgba(224,32,63,0.4);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-primary:hover{ transform:translateY(-1px); box-shadow:0 8px 20px rgba(224,32,63,0.55); }
+  .btn-ghost{
+    background:transparent; border:1px solid var(--border); color:var(--cream);
+    padding:9px 16px; border-radius:10px; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  .user-chip{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(255,255,255,0.06); border:1px solid var(--border);
+    padding:6px 12px 6px 6px; border-radius:22px; cursor:pointer;
+  }
+  .user-chip .dot-avatar{
+    width:26px;height:26px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, var(--rose), var(--maroon));
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;
+  }
+  .user-chip span{ font-size:13px; font-weight:600; }
+
+  .content{
+    flex:1; overflow-y:auto; padding:28px 32px 60px;
+  }
+  .content::-webkit-scrollbar{ width:8px; }
+  .content::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.12); border-radius:8px; }
+
+  .page{ display:none; animation:fadeUp .35s ease; }
+  .page.active{ display:block; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+  .page-title{ font-size:22px; font-weight:700; margin-bottom:4px; }
+  .page-sub{ color:var(--dim); font-size:13.5px; margin-bottom:24px; }
+
+  .hero-panel{
+    background:linear-gradient(120deg, rgba(224,32,63,0.18), rgba(74,7,19,0.35));
+    border:1px solid var(--border); border-radius:20px;
+    padding:28px 30px; margin-bottom:28px;
+    display:flex; justify-content:space-between; align-items:center; gap:20px;
+  }
+  .hero-panel h2{ font-size:24px; margin-bottom:8px; }
+  .hero-panel p{ color:var(--dim); font-size:14px; max-width:420px; }
+
+  @media (max-width: 600px) {
+    .hero-panel {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 16px !important;
+      padding: 20px !important;
+    }
+    .hero-panel .btn-primary {
+      width: 100%;
+      text-align: center;
+    }
+    .topbar {
+      padding: 12px 14px !important;
+      gap: 10px !important;
+    }
+  }
+
+  .chip-row{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
+  .chip{
+    padding:7px 16px; border-radius:20px; font-size:13px; font-weight:600;
+    background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--dim);
+    cursor:pointer; transition:all .15s ease;
+  }
+  .chip:hover{ color:var(--cream); }
+  .chip.active{
+    background:linear-gradient(135deg, var(--crimson-bright), var(--rose));
+    color:#fff; border-color:transparent;
+  }
+
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:16px;
+    overflow:hidden; cursor:pointer;
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 16px 30px rgba(0,0,0,0.4); }
+  .thumb{
+    position:relative; height:128px;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .thumb::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(120deg, rgba(255,255,255,0.12), transparent 60%);
+  }
+  .thumb .play{
+    width:38px;height:38px;border-radius:50%;
+    background:rgba(255,255,255,0.18); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity .18s ease; z-index:2;
+  }
+  .card:hover .thumb .play{ opacity:1; }
+  .thumb .play svg{ width:14px; height:14px; color:#fff; }
+  .duration{
+    position:absolute; bottom:6px; right:8px; background:rgba(0,0,0,0.65);
+    font-size:10.5px; padding:2px 6px; border-radius:5px; font-weight:600; z-index:2;
+  }
+  .save-toggle{
+    position:absolute; top:8px; right:8px; z-index:3;
+    width:26px; height:26px; border-radius:50%;
+    background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .save-toggle svg{ width:13px; height:13px; color:#fff; }
+  .save-toggle.saved{ background:var(--crimson-bright); }
+  .card .meta{ padding:12px 13px 14px; }
+  .card .title{ font-size:14px; font-weight:600; margin-bottom:5px; line-height:1.3; }
+  .card .sub{ font-size:12px; color:var(--dim); }
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--dim);
+  }
+  .empty-state svg{ width:44px;height:44px; margin-bottom:14px; color:var(--dimmer); }
+  .empty-state .btn-primary{ margin-top:16px; }
+
+  .settings-list{ max-width:480px; display:flex; flex-direction:column; gap:2px; }
+  .settings-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:16px 4px; border-bottom:1px solid var(--border);
+  }
+  .settings-row .label{ font-size:14px; font-weight:600; }
+  .settings-row .desc{ font-size:12px; color:var(--dim); margin-top:2px; }
+  .switch{
+    width:42px; height:24px; border-radius:14px; background:rgba(255,255,255,0.15);
+    position:relative; cursor:pointer; transition:background .2s ease; flex-shrink:0;
+  }
+  .switch::after{
+    content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%;
+    background:#fff; transition:transform .2s ease;
+  }
+  .switch.on{ background:var(--crimson-bright); }
+  .switch.on::after{ transform:translateX(18px); }
+
+  /* ===================== AUTH MODAL ===================== */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:100;
+    background:rgba(4,2,5,0.72); backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity .2s ease;
+  }
+  .modal-overlay.hidden{ display:none; }
+  .auth-card{
+    width:360px; background:var(--panel-solid); border:1px solid var(--border);
+    border-radius:20px; padding:30px 28px; position:relative;
+    box-shadow:0 30px 60px rgba(0,0,0,0.6);
+    animation:popIn .25s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn{ from{opacity:0; transform:scale(0.92) translateY(10px);} to{opacity:1; transform:scale(1) translateY(0);} }
+  .auth-card .close{
+    position:absolute; top:16px; right:16px; width:28px; height:28px; border-radius:50%;
+    background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--dim);
+  }
+  .auth-tabs{ display:flex; gap:6px; margin-bottom:22px; background:rgba(255,255,255,0.05); padding:4px; border-radius:12px; }
+  .auth-tabs button{
+    flex:1; padding:9px; border:none; border-radius:9px; background:none; color:var(--dim);
+    font-weight:600; font-size:13px; cursor:pointer; font-family:'Space Grotesk',sans-serif;
+  }
+  .auth-tabs button.active{ background:linear-gradient(135deg, var(--crimson-bright), var(--rose)); color:#fff; }
+  .auth-card h3{ font-size:19px; margin-bottom:6px; }
+  .auth-card .hint{ font-size:12.5px; color:var(--dim); margin-bottom:18px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--dim); margin-bottom:6px; font-weight:600; }
+  .field input{
+    width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--border);
+    background:rgba(255,255,255,0.05); color:var(--cream); font-size:14px; outline:none;
+  }
+  .field input:focus{ border-color:var(--crimson-bright); }
+  .form-error{ color:var(--rose); font-size:12.5px; margin:-4px 0 12px; min-height:14px; }
+  .auth-submit{
+    width:100%; padding:12px; border:none; border-radius:10px;
+    background:linear-gradient(135deg, var(--crimson-bright), var(--rose)); color:#fff;
+    font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .auth-divider{ display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--dimmer); font-size:12px; }
+  .auth-divider::before, .auth-divider::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .guest-btn{
+    width:100%; padding:11px; border-radius:10px; border:1px solid var(--border);
+    background:transparent; color:var(--cream); font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+
+  /* ===================== 3D UPLOAD PROGRESS RING ===================== */
+  .progress3d-wrap{
+    display:none; flex-direction:column; align-items:center; gap:14px;
+    padding:22px 0 8px; perspective:800px;
+  }
+  .progress3d-ring{
+    --pct:0; width:150px; height:150px; border-radius:50%;
+    background: conic-gradient(var(--rose) calc(var(--pct)*1%), rgba(255,255,255,0.07) 0);
+    transform: rotateX(58deg) rotateZ(0deg);
+    transform-style:preserve-3d; position:relative;
+    box-shadow: 0 34px 44px -14px rgba(224,32,63,0.55), inset 0 0 0 11px rgba(0,0,0,0.4);
+    animation: ring-spin-3d 5s linear infinite;
+  }
+  @keyframes ring-spin-3d{
+    from{ transform:rotateX(58deg) rotateZ(0deg); }
+    to{ transform:rotateX(58deg) rotateZ(360deg); }
+  }
+  .progress3d-face{
+    position:absolute; inset:16px; border-radius:50%; background:var(--panel-solid);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transform: rotateX(-58deg) translateZ(22px); text-align:center;
+  }
+  .progress3d-pct{ font-family:'Space Grotesk',sans-serif; font-size:22px; font-weight:700; }
+  .progress3d-sub{ font-size:10.5px; color:var(--dim); margin-top:4px; max-width:110px; line-height:1.3; }
+  .progress3d-meta{ font-size:12px; color:var(--dim); text-align:center; }
+  .progress3d-cancel{
+    background:transparent; border:1px solid var(--border); color:var(--rose);
+    font-size:12px; font-weight:600; padding:6px 14px; border-radius:8px; cursor:pointer;
+  }
+
+  /* ===================== FLOATING MINI-PLAYER STYLES ===================== */
+  #videoModal.modal-overlay {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    pointer-events: none !important;
+    justify-content: flex-end !important;
+    align-items: flex-end !important;
+    padding: 20px;
+  }
+  #videoModal .auth-card {
+    pointer-events: auto !important;
+    width: 320px !important;
+    max-width: 90vw !important;
+    padding: 12px !important;
+    background: var(--panel-solid) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.7) !important;
+    animation: slideUp .25s cubic-bezier(.34,1.56,.64,1) !important;
+    margin-bottom: 10px;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  #videoModal h3 {
+    font-size: 13.5px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 8px !important;
+    padding-right: 20px;
+  }
+
+  /* ===================== DEVICE VIEW MODES ===================== */
+  #app.force-desktop { max-width: 1400px !important; margin: 0 auto !important; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+  #app.force-tablet { max-width: 768px !important; margin: 0 auto !important; border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+  #app.force-mobile { max-width: 412px !important; margin: 0 auto !important; border-left: 1px solid var(--border); border-right: 1px solid var(--border); box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+  body:has(#app.force-tablet), body:has(#app.force-mobile) { background: #030104 !important; display: flex; justify-content: center; align-items: center; }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div class="scrim"></div>
+
+<div id="app">
+
+  <!-- ===== 3D DOCK ===== -->
+  <nav class="dock3d" id="dock">
+    <div class="brand">V</div>
+
+    <div class="cube3d active" data-page="home" data-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    </div>
+    <div class="cube3d" data-page="search" data-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </div>
+    <div class="cube3d" data-page="explore" data-label="Explore">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+    </div>
+    <div class="cube3d" data-page="library" data-label="Library">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+    </div>
+    <div class="cube3d" data-page="studio" data-label="Creator Studio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+    </div>
+    <div class="cube3d" data-page="settings" data-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06-.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </div>
+
+    <div class="dock-spacer"></div>
+
+    <div class="cube3d" id="authDockBtn" data-label="Log in">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+    </div>
+    <div class="avatar-btn" id="avatarBtn">?</div>
+  </nav>
+  <div class="dock-label" id="dockLabel"></div>
+
+  <!-- ===== MAIN COLUMN ===== -->
+  <div class="main-col">
+    <header class="topbar">
+      <div class="wordmark">VOX<span>EL</span></div>
+      <div class="search-shell">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="topSearch" placeholder="Search anything on Voxel…">
+      </div>
+      <div class="top-actions" id="topActions">
+        <button class="btn-ghost" id="loginTopBtn">Log in</button>
+        <button class="btn-primary" id="signupTopBtn">Sign up</button>
+      </div>
+      <button class="btn-primary" id="openUploadBtn" style="display:none; padding: 7px 14px; font-size:12px;">+ Upload</button>
+      <button class="btn-ghost" id="installBtn" style="display:none;">Install app</button>
+    </header>
+
+    <main class="content">
+
+      <!-- HOME -->
+      <section class="page active" id="page-home">
+        <div class="hero-panel">
+          <div>
+            <h2>Welcome to Voxel</h2>
+            <p>Every kind of video, one feed. Sign up to save what you love and build your own library.</p>
+          </div>
+          <button class="btn-primary" id="heroCta">Get started</button>
+        </div>
+        <div class="page-title">Recommended for you</div>
+        <div class="page-sub">A mix picked from across every category</div>
+        <div class="grid" id="homeGrid"></div>
+      </section>
+
+      <!-- SEARCH -->
+      <section class="page" id="page-search">
+        <div class="page-title">Search</div>
+        <div class="page-sub">Start typing above — results update as you type</div>
+        <div class="grid" id="searchGrid"></div>
+        <div class="empty-state" id="searchEmpty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <div>No results for that search yet</div>
+        </div>
+      </section>
+
+      <!-- EXPLORE -->
+      <section class="page" id="page-explore">
+        <div class="page-title">Explore</div>
+        <div class="page-sub">Browse by category</div>
+        <div class="chip-row" id="chipRow"></div>
+        <div class="grid" id="exploreGrid"></div>
+      </section>
+
+      <!-- LIBRARY -->
+      <section class="page" id="page-library">
+        <div class="page-title">Your library</div>
+        <div class="page-sub">Videos you've saved</div>
+        <div id="libraryContent"></div>
+      </section>
+
+      <!-- CREATOR STUDIO (MANAGE UPLOADS) -->
+      <section class="page" id="page-studio">
+        <div class="page-title">Creator Studio</div>
+        <div class="page-sub">Manage, monitor, and delete your published video assets</div>
+        <div id="studioContent"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="page" id="page-settings">
+        <div class="page-title">Settings</div>
+        <div class="page-sub">Manage your account and preferences</div>
+        <div class="settings-list" id="settingsAccount"></div>
+        <div class="settings-list">
+          <div class="settings-row">
+            <div>
+              <div class="label">Device View Mode</div>
+              <div class="desc">Force layout format (Desktop, Tablet, Mobile)</div>
+            </div>
+            <select id="deviceModeSelect" style="background: rgba(255,255,255,0.08); color: var(--cream); border: 1px solid var(--border); padding: 6px 12px; border-radius: 8px; outline: none; font-weight: 600; font-size: 13px;">
+              <option value="auto" style="background: #160a10;">Auto (Responsive)</option>
+              <option value="desktop" style="background: #160a10;">Desktop Mode</option>
+              <option value="tablet" style="background: #160a10;">Tablet Mode</option>
+              <option value="mobile" style="background: #160a10;">Mobile Mode</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div><div class="label">Autoplay next video</div><div class="desc">Keep watching without lifting a finger</div></div>
+            <div class="switch on" data-setting="autoplay"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="label">Notifications</div><div class="desc">Get notified about new uploads</div></div>
+            <div class="switch" data-setting="notif"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="label">Reduced motion</div><div class="desc">Calms down the background animation</div></div>
+            <div class="switch" data-setting="reduced"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ===== AUTH MODAL ===== -->
+<div class="modal-overlay hidden" id="authModal">
+  <div class="auth-card">
+    <div class="close" id="authClose">✕</div>
+    <div class="auth-tabs">
+      <button class="active" id="tabLogin">Log in</button>
+      <button id="tabSignup">Sign up</button>
+    </div>
+
+    <div id="loginForm">
+      <h3>Welcome back</h3>
+      <div class="hint">Log in with an account created this session</div>
+      <div class="field"><label>Username</label><input type="text" id="loginUser" placeholder="yourname"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+      <div class="form-error" id="loginError"></div>
+      <button class="auth-submit" id="loginSubmit">Log in</button>
+      <div class="auth-divider">or</div>
+      <button class="guest-btn" id="guestBtn">Continue as Guest</button>
+    </div>
+
+    <div id="signupForm" style="display:none;">
+      <h3>Create your account</h3>
+      <div class="hint">Stored securely in your PostgreSQL database</div>
+      <div class="field"><label>Username</label><input type="text" id="signupUser" placeholder="yourname"></div>
+      <div class="field"><label>Password</label><input type="password" id="signupPass" placeholder="At least 8 characters"></div>
+      <div class="field"><label>Confirm password</label><input type="password" id="signupPass2" placeholder="Repeat password"></div>
+      <div class="form-error" id="signupError"></div>
+      <button class="auth-submit" id="signupSubmit">Create account</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== UPLOAD & RECORD MODAL ===== -->
+<div class="modal-overlay hidden" id="uploadModal">
+  <div class="auth-card" style="width: 440px;">
+    <div class="close" id="uploadClose">✕</div>
+    <h3>Publish Video</h3>
+    <div class="hint">Upload a file or record live — large files upload in chunks automatically</div>
+
+    <div id="uploadFormFields">
+      <div class="auth-tabs" style="margin-bottom: 16px;">
+        <button class="active" id="tabUploadFile">Upload File</button>
+        <button id="tabRecordVideo">Record Live</button>
+      </div>
+
+      <div class="field">
+        <label>Title</label>
+        <input type="text" id="uploadTitle" placeholder="My Awesome Video">
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="uploadCategory" placeholder="Tech / Nature / Gaming">
+      </div>
+
+      <div id="fileSection" class="field">
+        <label>Video File</label>
+        <input type="file" id="uploadFileInput" accept="video/*" style="padding: 8px 0; color: var(--cream);">
+        <div id="fileSizeHint" style="font-size:11.5px; color:var(--dim); margin-top:4px;"></div>
+      </div>
+
+      <div id="recordSection" style="display:none;">
+        <div style="position: relative; width: 100%; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 12px; aspect-ratio: 16/9;">
+          <video id="liveCameraPreview" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+        </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <button class="btn-ghost" id="startCamBtn" style="flex: 1; font-size: 12px;">Turn On Camera</button>
+          <button class="btn-primary" id="startRecBtn" style="flex: 1; background: #e0203f;" disabled>Start Recording</button>
+          <button class="btn-ghost" id="stopRecBtn" style="flex: 1; display: none;" disabled>Stop</button>
+        </div>
+        <div id="recStatus" style="font-size: 12px; color: var(--rose); text-align: center; margin-bottom: 8px;"></div>
+      </div>
+
+      <div class="form-error" id="uploadError"></div>
+      <button class="auth-submit" id="uploadSubmitBtn">Publish to Voxel</button>
+    </div>
+
+    <div class="progress3d-wrap" id="progress3dWrap">
+      <div class="progress3d-ring" id="progress3dRing">
+        <div class="progress3d-face">
+          <div class="progress3d-pct" id="progress3dPct">0%</div>
+          <div class="progress3d-sub" id="progress3dSub">Preparing…</div>
+        </div>
+      </div>
+      <div class="progress3d-meta" id="progress3dMeta"></div>
+      <button class="progress3d-cancel" id="progress3dCancel">Cancel upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== FLOATING VIDEO PLAYER MODAL ===== -->
+<div class="modal-overlay hidden" id="videoModal">
+  <div class="auth-card">
+    <div class="close" id="closeVideoModal" style="top: 10px; right: 10px; width: 22px; height: 22px; font-size: 12px;">✕</div>
+    <h3 id="modalVideoTitle">Playing Video</h3>
+    <video id="modalVideoPlayer" controls autoplay style="width: 100%; border-radius: 8px; background: #000; aspect-ratio: 16/9;"></video>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ============ 3D AMBIENT BACKGROUND ============ */
+(function(){
+  const canvas = document.getElementById('bg');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.set(0, 0.4, 6.5);
+
+  const geo = new THREE.PlaneGeometry(12, 16, 120, 160);
+  const vertexShader = `
+    uniform float uTime;
+    varying vec3 vN; varying float vH;
+    float wave(vec2 p, float t){
+      float a = sin(p.x*1.6 + t*0.5) * cos(p.y*0.8 - t*0.35);
+      float b = sin((p.x+p.y)*1.0 - t*0.7) * 0.6;
+      float c = sin(p.y*2.2 + p.x*0.3 + t*0.9) * 0.3;
+      return a + b + c;
+    }
+    void main(){
+      vec3 pos = position;
+      float h = wave(pos.xy*0.4, uTime) * 0.5;
+      pos.z += h; vH = h;
+      float eps=0.05;
+      float hx = wave((pos.xy+vec2(eps,0.0))*0.4, uTime)*0.5;
+      float hy = wave((pos.xy+vec2(0.0,eps))*0.4, uTime)*0.5;
+      vec3 tx = normalize(vec3(eps,0.0,hx-h));
+      vec3 ty = normalize(vec3(0.0,eps,hy-h));
+      vN = normalize(cross(tx,ty));
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0);
+    }`;
+  const fragmentShader = `
+    precision highp float;
+    varying vec3 vN; varying float vH;
+    void main(){
+      vec3 lightDir = normalize(vec3(0.3,0.5,0.9));
+      float diff = max(dot(vN, lightDir), 0.0);
+      vec3 deep = vec3(0.06,0.01,0.03);
+      vec3 mid = vec3(0.42,0.02,0.09);
+      vec3 bright = vec3(0.78,0.08,0.17);
+      vec3 col = mix(deep, mid, smoothstep(-0.2,0.4,diff));
+      col = mix(col, bright, smoothstep(0.5,0.9,diff));
+      gl_FragColor = vec4(col,1.0);
+    }`;
+  const material = new THREE.ShaderMaterial({ uniforms:{ uTime:{value:0} }, vertexShader, fragmentShader, side:THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.rotation.z = 0.12;
+  mesh.position.set(1.2, -0.2, 0);
+  scene.add(mesh);
+
+  function resize(){
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const start = performance.now();
+  function animate(now){
+    const t = (now-start)*0.001;
+    if(!reduced){ material.uniforms.uTime.value = t; mesh.rotation.z = 0.12 + Math.sin(t*0.06)*0.02; }
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  requestAnimationFrame(animate);
+  window.__setReducedMotion = (v)=>{ reduced = v; };
+})();
+
+/* ============ APP STATE & DATA ============ */
+const state = {
+  user: null,
+  saved: new Set(),
+  settings: { autoplay:true, notif:false, reduced:false }
+};
+
+let VIDEOS = [
+  { id:1, title:"Building Interfaces That Feel Alive", creator:"Studio Nine", views:"128K", time:"2 days ago", duration:"12:04", cat:"Tech", hue:0, videoUrl:"https://www.w3schools.com/html/mov_bbb.mp4" },
+  { id:2, title:"A Quiet Morning in the Highlands", creator:"Wanderlens", views:"64K", time:"5 days ago", duration:"08:41", cat:"Nature", hue:330 },
+  { id:3, title:"Lo-fi Sessions Vol. 4", creator:"Nightframe", views:"302K", time:"1 week ago", duration:"34:12", cat:"Music", hue:280 },
+  { id:4, title:"Speedrunning the Impossible Level", creator:"PixelRush", views:"89K", time:"3 days ago", duration:"19:55", cat:"Gaming", hue:200 },
+  { id:5, title:"Sketching Light and Shadow", creator:"Inkwell", views:"41K", time:"6 hours ago", duration:"15:30", cat:"Art", hue:20 },
+  { id:6, title:"Inside the New GPU Architecture", creator:"Studio Nine", views:"210K", time:"4 days ago", duration:"22:17", cat:"Tech", hue:0 },
+  { id:7, title:"Coastal Drone Diaries, Ep. 3", creator:"Wanderlens", views:"77K", time:"1 day ago", duration:"10:02", cat:"Nature", hue:330 },
+  { id:8, title:"Synthwave for Late Nights", creator:"Nightframe", views:"156K", time:"2 weeks ago", duration:"41:09", cat:"Music", hue:280 },
+  { id:9, title:"Ranked Highlights: Best Plays", creator:"PixelRush", views:"98K", time:"12 hours ago", duration:"07:48", cat:"Gaming", hue:200 },
+  { id:10, title:"Portrait Study: Charcoal Basics", creator:"Inkwell", views:"33K", time:"3 days ago", duration:"18:22", cat:"Art", hue:20 },
+  { id:11, title:"Why Everyone's Talking About This Chip", creator:"Studio Nine", views:"245K", time:"6 days ago", duration:"14:40", cat:"Tech", hue:0 },
+  { id:12, title:"Desert Nights Timelapse", creator:"Wanderlens", views:"52K", time:"5 hours ago", duration:"05:59", cat:"Nature", hue:330 },
+];
+const CATEGORIES = ["All","Tech","Nature","Music","Gaming","Art"];
+
+/* ============ BACKEND SQL INTEGRATION HOOKS ============ */
+async function loadDatabaseVideos() {
+  try {
+    const res = await fetch('/api/v1/videos');
+    if (res.ok) {
+      const dbVideos = await res.json();
+      if (dbVideos && dbVideos.length > 0) {
+        VIDEOS = dbVideos;
+      }
+      refreshAllGrids();
+    }
+  } catch (err) {}
+}
+
+/* ============ CARD RENDERING ============ */
+function cardHTML(v){
+  const saved = state.saved.has(String(v.id));
+  return `
+  <div class="card" data-id="${v.id}">
+    <div class="thumb" style="background:linear-gradient(135deg, hsl(${v.hue || 0},80%,45%), hsl(${v.hue ? v.hue+20 : 20},70%,18%));">
+      <div class="save-toggle ${saved?'saved':''}" data-save="${v.id}">
+        <svg viewBox="0 0 24 24" fill="${saved?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+      </div>
+      <div class="play"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg></div>
+      <div class="duration">${v.duration || '02:00'}</div>
+    </div>
+    <div class="meta">
+      <div class="title">${v.title}</div>
+      <div class="sub">${v.creator} · ${v.views || '1K'} views · ${v.time || 'recently'}</div>
+    </div>
+  </div>`;
+}
+function renderGrid(el, list){
+  el.innerHTML = list.map(cardHTML).join('');
+  el.querySelectorAll('[data-save]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = String(btn.dataset.save);
+      if(state.saved.has(id)) state.saved.delete(id); else state.saved.add(id);
+      try { await fetch(`/api/v1/videos/${id}/save`, { method: 'POST' }); } catch(err){}
+      refreshAllGrids();
+      if(document.getElementById('page-library').classList.contains('active')) renderLibrary();
+    });
+  });
+}
+function refreshAllGrids(){
+  renderGrid(document.getElementById('homeGrid'), VIDEOS);
+  const q = document.getElementById('topSearch').value.trim().toLowerCase();
+  runSearch(q);
+  runExploreFilter(document.querySelector('.chip.active')?.dataset.cat || 'All');
+  if(document.getElementById('page-studio').classList.contains('active')) renderStudio();
+}
+
+/* ============ SEARCH ============ */
+function runSearch(q){
+  const grid = document.getElementById('searchGrid');
+  const empty = document.getElementById('searchEmpty');
+  if(!q){ grid.innerHTML=''; empty.style.display='none'; return; }
+  const results = VIDEOS.filter(v => v.title.toLowerCase().includes(q) || v.creator.toLowerCase().includes(q) || (v.cat || '').toLowerCase().includes(q));
+  renderGrid(grid, results);
+  empty.style.display = results.length ? 'none' : 'block';
+}
+document.getElementById('topSearch').addEventListener('input', (e)=>{
+  switchPage('search');
+  runSearch(e.target.value.trim().toLowerCase());
+});
+
+/* ============ EXPLORE ============ */
+function buildChips(){
+  const row = document.getElementById('chipRow');
+  row.innerHTML = CATEGORIES.map((c,i)=>`<div class="chip ${i===0?'active':''}" data-cat="${c}">${c}</div>`).join('');
+  row.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      row.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      runExploreFilter(chip.dataset.cat);
+    });
+  });
+}
+function runExploreFilter(cat){
+  const grid = document.getElementById('exploreGrid');
+  const list = cat==='All' ? VIDEOS : VIDEOS.filter(v=>v.cat===cat);
+  renderGrid(grid, list);
+}
+
+/* ============ LIBRARY ============ */
+async function renderLibrary(){
+  const wrap = document.getElementById('libraryContent');
+  if(!state.user){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        <div>Log in to build your library</div>
+        <button class="btn-primary" id="libLoginBtn">Log in</button>
+      </div>`;
+    document.getElementById('libLoginBtn').addEventListener('click', ()=>openAuth('login'));
+    return;
+  }
+  let savedVideos = VIDEOS.filter(v=>state.saved.has(String(v.id)));
+  try {
+    const res = await fetch('/api/v1/library');
+    if(res.ok) {
+      const dbSaved = await res.json();
+      if(dbSaved && dbSaved.length > 0) savedVideos = dbSaved;
+    }
+  } catch(err){}
+
+  if(!savedVideos.length){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        <div>Nothing saved yet — tap the bookmark on any video</div>
+      </div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="grid">${savedVideos.map(cardHTML).join('')}</div>`;
+  wrap.querySelectorAll('[data-save]').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = String(btn.dataset.save);
+      state.saved.delete(id);
+      try { await fetch(`/api/v1/videos/${id}/save`, { method: 'POST' }); } catch(err){}
+      refreshAllGrids(); renderLibrary();
+    });
+  });
+}
+
+/* ============ CREATOR STUDIO (MANAGE UPLOADS) ============ */
+async function renderStudio(){
+  const wrap = document.getElementById('studioContent');
+  if(!state.user){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+        <div>Log in to manage your Creator Studio uploads</div>
+        <button class="btn-primary" id="studioLoginBtn">Log in</button>
+      </div>`;
+    document.getElementById('studioLoginBtn').addEventListener('click', ()=>openAuth('login'));
+    return;
+  }
+
+  // Filter videos uploaded by current user
+  const myVideos = VIDEOS.filter(v => v.creator && v.creator.toLowerCase() === state.user.toLowerCase());
+
+  if(!myVideos.length){
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <div>You haven't published any videos yet. Click Upload above to start!</div>
+        <button class="btn-primary" id="studioUploadBtn" style="margin-top: 16px;">Publish Video</button>
+      </div>`;
+    document.getElementById('studioUploadBtn').addEventListener('click', () => {
+      uploadModal.classList.remove('hidden');
+    });
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="display: flex; flex-direction: column; gap: 12px; max-width: 700px;">
+      ${myVideos.map(v => `
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--panel); border: 1px solid var(--border); padding: 12px 16px; border-radius: 12px; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+            <div style="width: 60px; height: 38px; border-radius: 6px; background: linear-gradient(135deg, hsl(${v.hue || 10},80%,45%), #000); flex-shrink: 0; display:flex; align-items:center; justify-content:center;">
+              <svg viewBox="0 0 24 24" fill="#fff" width="16" height="16"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+            </div>
+            <div style="min-width: 0;">
+              <div style="font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${v.title}</div>
+              <div style="font-size: 12px; color: var(--dim);">${v.cat || 'Tech'} · ${v.views || '0'} views</div>
+            </div>
+          </div>
+          <button class="btn-ghost delete-video-btn" data-id="${v.id}" style="color: var(--rose); border-color: rgba(255,85,119,0.3); font-size: 12px; padding: 6px 12px;">Delete</button>
+        </div>
+      `).join('')}
+    </div>`;
+
+  wrap.querySelectorAll('.delete-video-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if(confirm('Are you sure you want to delete this video?')) {
+        try {
+          const res = await fetch(`/api/v1/videos/${id}`, { method: 'DELETE' });
+          if(res.ok || res.status === 404) {
+            VIDEOS = VIDEOS.filter(v => String(v.id) !== String(id));
+            refreshAllGrids();
+            alert('Video deleted successfully.');
+          } else {
+            alert('Could not delete video from server.');
+          }
+        } catch(err) {
+          // Fallback removal locally if endpoint is absent
+          VIDEOS = VIDEOS.filter(v => String(v.id) !== String(id));
+          refreshAllGrids();
+          alert('Video removed.');
+        }
+      }
+    });
+  });
+}
+
+/* ============ PAGE SWITCHING ============ */
+function switchPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.cube3d[data-page]').forEach(b=>b.classList.remove('active'));
+  const btn = document.querySelector(`.cube3d[data-page="${name}"]`);
+  if(btn) btn.classList.add('active');
+  if(name==='library') renderLibrary();
+  if(name==='studio') renderStudio();
+}
+document.querySelectorAll('.cube3d[data-page]').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchPage(btn.dataset.page));
+});
+
+/* dock hover labels */
+const dockLabel = document.getElementById('dockLabel');
+document.querySelectorAll('.cube3d, .avatar-btn').forEach(el=>{
+  el.addEventListener('mouseenter', ()=>{
+    const label = el.dataset.label || (state.user ? 'Profile' : 'Log in');
+    dockLabel.textContent = label;
+    const r = el.getBoundingClientRect();
+    dockLabel.style.top = (r.top + r.height/2 - 12) + 'px';
+    dockLabel.style.opacity = '1';
+  });
+  el.addEventListener('mouseleave', ()=> dockLabel.style.opacity='0');
+});
+
+/* ============ SETTINGS ============ */
+function renderSettingsAccount(){
+  const wrap = document.getElementById('settingsAccount');
+  if(state.user){
+    wrap.innerHTML = `
+      <div class="settings-row">
+        <div><div class="label">Signed in as ${state.user}</div><div class="desc">This session only</div></div>
+        <button class="btn-ghost" id="settingsLogout">Log out</button>
+      </div>`;
+    document.getElementById('settingsLogout').addEventListener('click', logout);
+  } else {
+    wrap.innerHTML = `
+      <div class="settings-row">
+        <div><div class="label">You're not logged in</div><div class="desc">Log in to save preferences to your account</div></div>
+        <button class="btn-primary" id="settingsLogin">Log in</button>
+      </div>`;
+    document.getElementById('settingsLogin').addEventListener('click', ()=>openAuth('login'));
+  }
+}
+document.querySelectorAll('.switch[data-setting]').forEach(sw=>{
+  sw.addEventListener('click', ()=>{
+    const key = sw.dataset.setting;
+    state.settings[key] = !state.settings[key];
+    sw.classList.toggle('on', state.settings[key]);
+    if(key==='reduced') window.__setReducedMotion(state.settings.reduced);
+  });
+});
+
+/* ============ DEVICE VIEW MODE SWITCHER ============ */
+const deviceModeSelect = document.getElementById('deviceModeSelect');
+if(deviceModeSelect) {
+  deviceModeSelect.addEventListener('change', (e) => {
+    const mode = e.target.value;
+    const app = document.getElementById('app');
+    app.classList.remove('force-desktop', 'force-tablet', 'force-mobile');
+    if (mode === 'desktop') app.classList.add('force-desktop');
+    else if (mode === 'tablet') app.classList.add('force-tablet');
+    else if (mode === 'mobile') app.classList.add('force-mobile');
+  });
+}
+
+/* ============ AUTH ============ */
+const authModal = document.getElementById('authModal');
+function openAuth(mode){
+  authModal.classList.remove('hidden');
+  setAuthTab(mode || 'login');
+}
+function closeAuth(){ authModal.classList.add('hidden'); clearAuthErrors(); }
+function setAuthTab(mode){
+  document.getElementById('tabLogin').classList.toggle('active', mode==='login');
+  document.getElementById('tabSignup').classList.toggle('active', mode==='signup');
+  document.getElementById('loginForm').style.display = mode==='login' ? 'block':'none';
+  document.getElementById('signupForm').style.display = mode==='signup' ? 'block':'none';
+  clearAuthErrors();
+}
+function clearAuthErrors(){
+  document.getElementById('loginError').textContent='';
+  document.getElementById('signupError').textContent='';
+}
+document.getElementById('authClose').addEventListener('click', closeAuth);
+authModal.addEventListener('click', (e)=>{ if(e.target===authModal) closeAuth(); });
+document.getElementById('tabLogin').addEventListener('click', ()=>setAuthTab('login'));
+document.getElementById('tabSignup').addEventListener('click', ()=>setAuthTab('signup'));
+document.getElementById('loginTopBtn').addEventListener('click', ()=>openAuth('login'));
+document.getElementById('signupTopBtn').addEventListener('click', ()=>openAuth('signup'));
+document.getElementById('heroCta').addEventListener('click', ()=>openAuth('signup'));
+document.getElementById('guestBtn').addEventListener('click', ()=>{ login('Guest'); closeAuth(); });
+
+document.getElementById('authDockBtn').addEventListener('click', ()=>{
+  if(state.user) logout(); else openAuth('login');
+});
+document.getElementById('avatarBtn').addEventListener('click', ()=>{
+  if(state.user) switchPage('settings'); else openAuth('login');
+});
+
+document.getElementById('signupSubmit').addEventListener('click', async ()=>{
+  const u = document.getElementById('signupUser').value.trim();
+  const p = document.getElementById('signupPass').value;
+  const p2 = document.getElementById('signupPass2').value;
+  const err = document.getElementById('signupError');
+  if(!u || !p){ err.textContent='Fill in a username and password.'; return; }
+  if(p.length < 8){ err.textContent='Password needs at least 8 characters for security.'; return; }
+  if(p !== p2){ err.textContent='Passwords don\'t match.'; return; }
+  
+  try {
+    const email = u.includes('@') ? u : `${u.toLowerCase().replace(/[^a-z0-9]/g, '')}@voxel.com`;
+    const res = await fetch('/api/v1/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, email, password: p })
+    });
+    const data = await res.json();
+    if(res.ok) {
+      login(data.user.username || u);
+      closeAuth();
+    } else {
+      err.textContent = data.error || 'Account creation failed.';
+    }
+  } catch(error) {
+    err.textContent = 'Server connection failed.';
+  }
+});
+
+document.getElementById('loginSubmit').addEventListener('click', async ()=>{
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginError');
+  if(!u || !p){ err.textContent='Fill in a username and password.'; return; }
+  
+  try {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const data = await res.json();
+    if(res.ok) {
+      login(data.user.username || u);
+      closeAuth();
+    } else {
+      err.textContent = 'No match — sign up first, or try Guest.';
+    }
+  } catch(error) {
+    err.textContent = 'Server connection failed.';
+  }
+});
+
+function login(username){
+  state.user = username;
+  updateAuthUI();
+}
+async function logout(){
+  try { await fetch('/api/v1/auth/logout', { method: 'POST' }); } catch(err){}
+  state.user = null;
+  state.saved.clear();
+  updateAuthUI();
+  switchPage('home');
+}
+function updateAuthUI(){
+  const topActions = document.getElementById('topActions');
+  const authDockBtn = document.getElementById('authDockBtn');
+  const avatarBtn = document.getElementById('avatarBtn');
+  const openUploadBtn = document.getElementById('openUploadBtn');
+
+  if(state.user){
+    topActions.innerHTML = `
+      <div class="user-chip" id="userChip">
+        <div class="dot-avatar">${state.user[0].toUpperCase()}</div>
+        <span>${state.user}</span>
+      </div>`;
+    document.getElementById('userChip').addEventListener('click', ()=>switchPage('settings'));
+    authDockBtn.dataset.label = 'Log out';
+    authDockBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
+    avatarBtn.textContent = state.user[0].toUpperCase();
+    if(openUploadBtn) openUploadBtn.style.display = 'inline-flex';
+  } else {
+    topActions.innerHTML = `
+      <button class="btn-ghost" id="loginTopBtn">Log in</button>
+      <button class="btn-primary" id="signupTopBtn">Sign up</button>`;
+    document.getElementById('loginTopBtn').addEventListener('click', ()=>openAuth('login'));
+    document.getElementById('signupTopBtn').addEventListener('click', ()=>openAuth('signup'));
+    authDockBtn.dataset.label = 'Log in';
+    authDockBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>`;
+    avatarBtn.textContent = '?';
+    if(openUploadBtn) openUploadBtn.style.display = 'none';
+  }
+  renderSettingsAccount();
+  if(document.getElementById('page-library').classList.contains('active')) renderLibrary();
+  if(document.getElementById('page-studio').classList.contains('active')) renderStudio();
+}
+
+/* ============ UPLOAD & LIVE RECORDING SYSTEM ============ */
+const uploadModal = document.getElementById('uploadModal');
+const openUploadBtn = document.getElementById('openUploadBtn');
+
+let mediaRecorder;
+let recordedChunks = [];
+let recordedBlob = null;
+let cameraStream = null;
+
+const tabUploadFile = document.getElementById('tabUploadFile');
+const tabRecordVideo = document.getElementById('tabRecordVideo');
+const fileSection = document.getElementById('fileSection');
+const recordSection = document.getElementById('recordSection');
+
+tabUploadFile.addEventListener('click', () => {
+  tabUploadFile.classList.add('active');
+  tabRecordVideo.classList.remove('active');
+  fileSection.style.display = 'block';
+  recordSection.style.display = 'none';
+  stopCameraStream();
+});
+
+tabRecordVideo.addEventListener('click', () => {
+  tabRecordVideo.classList.add('active');
+  tabUploadFile.classList.remove('active');
+  fileSection.style.display = 'none';
+  recordSection.style.display = 'block';
+});
+
+function stopCameraStream() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  const preview = document.getElementById('liveCameraPreview');
+  if (preview) preview.srcObject = null;
+}
+
+document.getElementById('uploadClose').addEventListener('click', () => {
+  if(activeUpload){ if(!confirm('An upload is in progress. Cancel it?')) return; cancelActiveUpload(); }
+  uploadModal.classList.add('hidden');
+  resetUploadForm();
+  stopCameraStream();
+});
+
+if(openUploadBtn) {
+  openUploadBtn.addEventListener('click', () => {
+    if (!state.user) {
+      openAuth('login');
+      return;
+    }
+    uploadModal.classList.remove('hidden');
+  });
+}
+
+const startCamBtn = document.getElementById('startCamBtn');
+const startRecBtn = document.getElementById('startRecBtn');
+const stopRecBtn = document.getElementById('stopRecBtn');
+const recStatus = document.getElementById('recStatus');
+const livePreview = document.getElementById('liveCameraPreview');
+
+startCamBtn.addEventListener('click', async () => {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    livePreview.srcObject = cameraStream;
+    startRecBtn.disabled = false;
+    recStatus.textContent = 'Camera ready. Tap Start Recording.';
+  } catch (err) {
+    recStatus.textContent = 'Camera permission denied or unavailable.';
+  }
+});
+
+startRecBtn.addEventListener('click', () => {
+  recordedChunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(cameraStream, { mimeType: 'video/webm' });
+  } catch (e) {
+    mediaRecorder = new MediaRecorder(cameraStream);
+  }
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    recordedBlob = new Blob(recordedChunks, { type: 'video/webm' });
+    recStatus.textContent = 'Recording saved! Ready to publish.';
+  };
+
+  mediaRecorder.start();
+  startRecBtn.style.display = 'none';
+  stopRecBtn.style.display = 'inline-block';
+  stopRecBtn.disabled = false;
+  recStatus.textContent = '🔴 Recording live...';
+});
+
+stopRecBtn.addEventListener('click', () => {
+  mediaRecorder.stop();
+  stopRecBtn.style.display = 'none';
+  startRecBtn.style.display = 'inline-block';
+  startRecBtn.disabled = false;
+  stopCameraStream();
+});
+
+document.getElementById('uploadFileInput').addEventListener('change', (e) => {
+  const f = e.target.files[0];
+  const hint = document.getElementById('fileSizeHint');
+  if(!f){ hint.textContent=''; return; }
+  hint.textContent = `${(f.size/1024/1024/1024).toFixed(2)} GB selected`;
+});
+
+/* ============ CHUNKED RESUMABLE UPLOAD ENGINE ============
+   Files are sliced client-side into 8MB pieces and PUT to the server one
+   at a time. The server streams each chunk straight to disk (see
+   server.ts), so this works the same way whether the file is 50MB or
+   50GB — the only difference is how many chunks there are. */
+const CHUNK_SIZE = 8 * 1024 * 1024;
+let activeUpload = null; // { xhr, uploadId, cancelled }
+
+function resetUploadForm(){
+  document.getElementById('uploadFormFields').style.display = 'block';
+  document.getElementById('progress3dWrap').style.display = 'none';
+  document.getElementById('progress3dRing').style.setProperty('--pct', 0);
+  document.getElementById('progress3dPct').textContent = '0%';
+  document.getElementById('progress3dSub').textContent = 'Preparing…';
+  document.getElementById('progress3dMeta').textContent = '';
+  document.getElementById('uploadError').textContent = '';
+}
+function setProgress(pct, subLabel, metaLabel){
+  document.getElementById('progress3dRing').style.setProperty('--pct', Math.round(pct));
+  document.getElementById('progress3dPct').textContent = Math.round(pct) + '%';
+  if(subLabel) document.getElementById('progress3dSub').textContent = subLabel;
+  if(metaLabel) document.getElementById('progress3dMeta').textContent = metaLabel;
+}
+function cancelActiveUpload(){
+  if(activeUpload){
+    activeUpload.cancelled = true;
+    if(activeUpload.xhr) activeUpload.xhr.abort();
+    if(activeUpload.uploadId) fetch(`/api/v1/uploads/${activeUpload.uploadId}`, { method:'DELETE' }).catch(()=>{});
+    activeUpload = null;
+  }
+}
+document.getElementById('progress3dCancel').addEventListener('click', () => {
+  cancelActiveUpload();
+  resetUploadForm();
+});
+
+function uploadChunkXHR(url, blob, onProgress){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    activeUpload.xhr = xhr;
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.upload.onprogress = (e) => { if(e.lengthComputable) onProgress(e.loaded); };
+    xhr.onload = () => { if(xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error('Chunk upload failed (' + xhr.status + ')')); };
+    xhr.onerror = () => reject(new Error('Network error during chunk upload'));
+    xhr.onabort = () => reject(new Error('cancelled'));
+    xhr.send(blob);
+  });
+}
+
+async function chunkedUpload(file, meta){
+  activeUpload = { xhr:null, uploadId:null, cancelled:false };
+  setProgress(0, 'Starting upload…', `0 MB of ${(file.size/1024/1024/1024).toFixed(2)} GB`);
+
+  const initRes = await fetch('/api/v1/uploads/init', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ filename:file.name, size:file.size, mimeType:file.type || 'video/mp4', ...meta })
+  });
+  if(!initRes.ok){ const e = await initRes.json().catch(()=>({})); throw new Error(e.error || 'Server rejected this upload.'); }
+  const { uploadId, chunkSize, totalChunks } = await initRes.json();
+  activeUpload.uploadId = uploadId;
+
+  let resumeFrom = 0;
+  try {
+    const statusRes = await fetch(`/api/v1/uploads/${uploadId}/status`);
+    if(statusRes.ok){ const { received } = await statusRes.json(); resumeFrom = received.length; }
+  } catch(err){}
+
+  let uploadedBytes = resumeFrom * chunkSize;
+
+  for(let i = resumeFrom; i < totalChunks; i++){
+    if(activeUpload.cancelled) throw new Error('cancelled');
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const blob = file.slice(start, end);
+    const chunkBase = uploadedBytes;
+
+    await uploadChunkXHR(`/api/v1/uploads/${uploadId}/chunk/${i}`, blob, (loadedInChunk) => {
+      const totalLoaded = chunkBase + loadedInChunk;
+      const pct = (totalLoaded / file.size) * 100;
+      setProgress(pct, `Uploading chunk ${i+1} of ${totalChunks}…`,
+        `${(totalLoaded/1024/1024).toFixed(0)} MB of ${(file.size/1024/1024/1024).toFixed(2)} GB`);
+    });
+    uploadedBytes = end;
+  }
+
+  setProgress(99, 'Finalizing on server…', 'Almost done');
+  const completeRes = await fetch(`/api/v1/uploads/${uploadId}/complete`, { method:'POST' });
+  if(!completeRes.ok){ const e = await completeRes.json().catch(()=>({})); throw new Error(e.error || 'Could not finalize the upload.'); }
+  setProgress(100, 'Done!', 'Published');
+  const video = await completeRes.json();
+  activeUpload = null;
+  return video;
+}
+
+document.getElementById('uploadSubmitBtn').addEventListener('click', async () => {
+  const title = document.getElementById('uploadTitle').value.trim();
+  const category = document.getElementById('uploadCategory').value.trim() || 'Tech';
+  const fileInput = document.getElementById('uploadFileInput').files[0];
+  const errEl = document.getElementById('uploadError');
+  errEl.textContent = '';
+
+  if (!title) { errEl.textContent = 'Please enter a video title.'; return; }
+
+  const isRecordingMode = recordSection.style.display === 'block';
+  let fileToUpload = null;
+  if (isRecordingMode) {
+    if (!recordedBlob) { errEl.textContent = 'Please record a video first.'; return; }
+    fileToUpload = new File([recordedBlob], `recording-${Date.now()}.webm`, { type: 'video/webm' });
+  } else {
+    if (!fileInput) { errEl.textContent = 'Please select a video file.'; return; }
+    fileToUpload = fileInput;
+  }
+
+  document.getElementById('uploadFormFields').style.display = 'none';
+  document.getElementById('progress3dWrap').style.display = 'flex';
+
+  try {
+    const video = await chunkedUpload(fileToUpload, { title, category });
+    VIDEOS.unshift(video);
+    refreshAllGrids();
+    setTimeout(() => {
+      uploadModal.classList.add('hidden');
+      resetUploadForm();
+      document.getElementById('uploadTitle').value = '';
+      document.getElementById('uploadCategory').value = '';
+      document.getElementById('uploadFileInput').value = '';
+      document.getElementById('fileSizeHint').textContent = '';
+      recordedBlob = null;
+      stopCameraStream();
+    }, 700);
+  } catch (err) {
+    if(err.message === 'cancelled'){ resetUploadForm(); return; }
+    document.getElementById('uploadFormFields').style.display = 'block';
+    document.getElementById('progress3dWrap').style.display = 'none';
+    errEl.textContent = err.message || 'Upload failed. Please try again.';
+    activeUpload = null;
+  }
+});
+
+/* ============ VIDEO PLAYER & PWA LOGIC ============ */
+document.addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if(!card) return;
+  
+  const videoId = card.dataset.id;
+  const videoObj = VIDEOS.find(v => String(v.id) === String(videoId));
+  
+  if(videoObj && videoObj.videoUrl) {
+    const modal = document.getElementById('videoModal');
+    const player = document.getElementById('modalVideoPlayer');
+    const title = document.getElementById('modalVideoTitle');
+    
+    title.textContent = videoObj.title;
+    player.src = videoObj.videoUrl;
+    modal.classList.remove('hidden');
+    player.play().catch(() => {});
+  } else if(videoObj) {
+    alert("This video doesn't have a playback link yet!");
+  }
+});
+
+document.getElementById('closeVideoModal').addEventListener('click', () => {
+  const modal = document.getElementById('videoModal');
+  const player = document.getElementById('modalVideoPlayer');
+  player.pause();
+  player.src = '';
+  modal.classList.add('hidden');
+});
+
+/* ============ INIT ============ */
+renderGrid(document.getElementById('homeGrid'), VIDEOS);
+buildChips();
+runExploreFilter('All');
+renderSettingsAccount();
+loadDatabaseVideos();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.style.display = 'inline-flex';
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBtn.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => {
+  installBtn.style.display = 'none';
+});
+</script>
+</body>
+</html>
